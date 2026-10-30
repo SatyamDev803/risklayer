@@ -1,0 +1,50 @@
+services:
+  - type: web
+    name: risklayer
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm run server
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: HSP_MODE
+        value: local
+      - key: PAYMENT_NETWORK
+        value: hashkey-testnet
+      - key: PUBLIC_URL
+        sync: false
+      - key: SELLER_ADDRESS
+        sync: false
+      - key: SELLER_PRIVATE_KEY
+        sync: false
+      - key: MERCHANT_PRIVATE_KEY_PEM
+        sync: false
+      - key: HSP_APP_KEY
+        sync: false
+      - key: HSP_APP_SECRET
+        sync: false
+      - key: RELAYER_PRIVATE_KEY
+        sync: false
+      - key: RECEIPTS_ADDRESS
+        sync: false
+      - key: DEMO_AGENT
+        value: "1"
+      - key: AGENT_PRIVATE_KEY
+        sync: false
+
+  - type: web
+    name: risklayer-web
+    runtime: node
+    plan: free
+    rootDir: web
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: RISKLAYER_URL
+        sync: false
+      - key: NEXT_PUBLIC_RISKLAYER_URL
+        sync: false
