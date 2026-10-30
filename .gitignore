@@ -1,0 +1,9 @@
+node_modules
+.env
+*.pem
+activity.jsonl
+contracts/out
+contracts/cache
+contracts/lib
+web/.next
+web/node_modules

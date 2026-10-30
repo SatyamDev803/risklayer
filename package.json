@@ -1,0 +1,38 @@
+{
+  "name": "risklayer",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The check an AI agent runs before it moves money on HSK Chain. Paid agent-to-agent through HSP, recorded on-chain.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "server": "tsx src/server.ts",
+    "agent": "tsx src/agent/tradingAgent.ts",
+    "keys": "tsx scripts/keys.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "contracts:test": "cd contracts && forge test",
+    "contracts:deploy": "cd contracts && forge create src/RisklayerReceipts.sol:RisklayerReceipts --rpc-url hsk --private-key $SELLER_PRIVATE_KEY --broadcast --constructor-args $SELLER_ADDRESS",
+    "contracts:verify": "cd contracts && forge verify-contract $RECEIPTS_ADDRESS src/RisklayerReceipts.sol:RisklayerReceipts --chain-id 177 --verifier blockscout --verifier-url https://hsk.blockscout.com/api/ --constructor-args $(cast abi-encode 'constructor(address)' $SELLER_ADDRESS)",
+    "web:dev": "npm --prefix web run dev",
+    "web:build": "npm --prefix web run build"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "viem": "^2.57.13",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.6",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}
