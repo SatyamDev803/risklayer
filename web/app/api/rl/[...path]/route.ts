@@ -16,7 +16,12 @@ async function proxy(req: NextRequest, parts: string[]): Promise<Response> {
   try {
     upstream = await fetch(`${RISKLAYER_URL}/${path}${req.nextUrl.search}`, {
       method: req.method,
-      headers: { accept: "application/json", "content-type": req.headers.get("content-type") ?? "application/json" },
+      headers: {
+        accept: "application/json",
+        "content-type": req.headers.get("content-type") ?? "application/json",
+        // Server-side only: the browser never sees the demo token.
+        ...(path === "v1/demo/agent" && process.env.DEMO_AGENT_TOKEN ? { "X-Demo-Token": process.env.DEMO_AGENT_TOKEN } : {}),
+      },
       body: req.method === "POST" ? await req.text() : undefined,
       cache: "no-store",
       signal: AbortSignal.timeout(180_000),

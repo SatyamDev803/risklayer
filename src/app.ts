@@ -10,7 +10,7 @@
  * The answer is bound to the request id, so it cannot be replayed for a
  * different question, and it is computed once per payment.
  */
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import cors from "cors";
 import express from "express";
 import type { Address, Hex, LocalAccount } from "viem";
@@ -42,9 +42,12 @@ export interface AppDeps {
   /** Extra routers mounted before the paid routes (local gateway, MCP). */
   mounts?: { path: string; handler: express.RequestHandler | express.Router }[];
   devBypass?: boolean;
+  /** Treat payments the local gateway verified but did not broadcast as paid.
+   * Off unless explicitly enabled: a public server must not answer for free. */
+  allowSimulatedPayments?: boolean;
   /** Enables POST /v1/demo/agent: the dashboard watches the trading agent
    * buy checks from this server. It never sends a swap. */
-  demoAgent?: { account: LocalAccount; seller: () => string; maxUsdPerCall: number; currentBlock?: () => Promise<number> };
+  demoAgent?: { account: LocalAccount; seller: () => string; maxUsdPerCall: number; currentBlock?: () => Promise<number>; token?: string; maxRunsPerHour?: number };
   log?: (entry: ActivityEntry) => void;
 }
 
@@ -77,7 +80,10 @@ export function createApp(deps: AppDeps) {
 
   const payMandateUrl = () => (typeof deps.payMandateUrl === "function" ? deps.payMandateUrl() : deps.payMandateUrl);
 
-  const isPaid = (r: PaidRequest) => PAID_STATES.has(r.payment.status) || (deps.hspMode === "local" && r.payment.simulated && r.payment.status === "payment-verified");
+  const isPaid = (r: PaidRequest) =>
+    PAID_STATES.has(r.payment.status) || (deps.hspMode === "local" && !!deps.allowSimulatedPayments && r.payment.simulated && r.payment.status === "payment-verified");
+  /** Public logs show a hash of the request id: the id itself lets its holder fetch the paid answer. */
+  const publicRef = (requestId: string) => createHash("sha256").update(requestId).digest("hex").slice(0, 12);
 
   /** Apply a payment update without ever moving backwards (webhooks retry and race polls). */
   function applyPayment(r: PaidRequest, rec: Partial<PaymentRecord> & { status: string; simulated?: boolean }) {
@@ -142,12 +148,16 @@ export function createApp(deps: AppDeps) {
     }),
   );
 
-  app.get("/v1/activity", (req, res) => res.json({ entries: readActivity(Math.min(200, Number(req.query.limit ?? 50) || 50)) }));
+  app.get("/v1/activity", (req, res) => {
+    const limit = Math.max(1, Math.min(200, Math.trunc(Number(req.query.limit ?? 50)) || 50));
+    res.json({ entries: readActivity(limit) });
+  });
 
   app.get("/v1/requests/:id", (req, res) => {
     const r = requests.get(req.params.id);
     if (!r) return res.status(404).json({ error: "unknown request" });
-    res.json({ requestId: r.requestId, sku: r.sku, query: r.query, payment: r.payment, paid: isPaid(r), answer: r.answer ?? null });
+    // Status only. The answer is served by GET /v1/:sku with the request header, bound to the same question.
+    res.json({ requestId: r.requestId, sku: r.sku, payment: { status: r.payment.status, simulated: r.payment.simulated }, paid: isPaid(r), answered: !!r.answer });
   });
 
   /** Free preview: the verdict and reasons, without evidence, proof or receipt. */
@@ -212,7 +222,7 @@ export function createApp(deps: AppDeps) {
       res.json(await r.fulfilling);
     } catch (e) {
       r.fulfilling = undefined;
-      log({ ts: new Date().toISOString(), requestId: r.requestId, sku, query, mode: "paid", ok: false, error: (e as Error).message });
+      log({ ts: new Date().toISOString(), requestId: publicRef(r.requestId), sku, query, mode: "paid", ok: false, error: (e as Error).message });
       res.status(502).json({ error: `paid, but the answer could not be computed: ${(e as Error).message}. Retry with the same request id; you will not be charged again.` });
     }
   };
@@ -275,7 +285,8 @@ export function createApp(deps: AppDeps) {
     const env = await runSku(r.sku, new URLSearchParams(r.rawQuery), r.requestId, compute);
     let receiptTx: Hex | undefined;
     let receiptError: string | undefined;
-    if (deps.receipts && r.payment.payer) {
+    // Receipts record real payments only; a simulated payment never reaches the chain.
+    if (deps.receipts && r.payment.payer && !r.payment.simulated) {
       try {
         receiptTx = await deps.receipts.record(r.paymentRequestId, env, r.payment.payer);
       } catch (e) {
@@ -301,7 +312,7 @@ export function createApp(deps: AppDeps) {
     };
     r.answer = answer;
     log({
-      ts: new Date().toISOString(), requestId: r.requestId, sku: r.sku, query: r.query, mode: "paid",
+      ts: new Date().toISOString(), requestId: publicRef(r.requestId), sku: r.sku, query: r.query, mode: "paid",
       verdict: env.verdict, reasons: env.reasons, resultHash: env.proof.resultHash, blockNumber: env.proof.blockNumber,
       payment: { mode: deps.hspMode, status: r.payment.status, simulated: r.payment.simulated, payer: r.payment.payer, tx: r.payment.tx, network: token.network, amountUsd: r.priceUsd },
       receiptTx, ok: true,
@@ -312,8 +323,18 @@ export function createApp(deps: AppDeps) {
   /* ---------------- demo agent (dashboard) ---------------- */
 
   let agentBusy = false;
+  const agentRuns: number[] = [];
   app.post("/v1/demo/agent", async (req, res) => {
     if (!deps.demoAgent) return res.status(404).json({ error: "the demo agent is not enabled on this server" });
+    const token = deps.demoAgent.token;
+    const given = req.get("X-Demo-Token") ?? "";
+    if (token && !(given.length === token.length && timingSafeEqual(Buffer.from(given), Buffer.from(token)))) {
+      return res.status(401).json({ error: "This server needs a demo token to run the agent." });
+    }
+    // Each run can spend real USDC: cap runs per hour across all callers.
+    const hourAgo = Date.now() - 3_600_000;
+    while (agentRuns.length && agentRuns[0] < hourAgo) agentRuns.shift();
+    if (agentRuns.length >= (deps.demoAgent.maxRunsPerHour ?? 30)) return res.status(429).json({ error: "The demo agent has reached its hourly limit. Try again later." });
     const body = (req.body ?? {}) as Record<string, unknown>;
     const q = new URLSearchParams({
       tokenIn: String(body.tokenIn ?? "USDT"),
@@ -328,6 +349,7 @@ export function createApp(deps: AppDeps) {
     }
     if (agentBusy) return res.status(429).json({ error: "The agent is already running. Try again in a few seconds." });
     agentBusy = true;
+    agentRuns.push(Date.now());
     res.status(200).set({ "Content-Type": "application/x-ndjson", "X-Accel-Buffering": "no" });
     res.flushHeaders();
     const emit = (e: AgentEvent) => res.write(`${JSON.stringify(e)}\n`);

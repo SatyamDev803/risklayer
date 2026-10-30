@@ -46,6 +46,9 @@ const payMandateUrl = mode === "local" ? `${publicUrl}/hsp-local/api/v1/payment/
 const merchant = new HspMerchant({ baseUrl: hspBase, appKey, appSecret, merchantPrivateKeyPem: keyPem, merchantName: process.env.MERCHANT_NAME?.trim() || "Risklayer" });
 const merchantPublicKeyPem = publicKeyPem(keyPem);
 const receipts = receiptsWriter();
+if (mode === "local" && !process.env.RELAYER_PRIVATE_KEY?.trim() && process.env.ALLOW_SIMULATED_PAYMENTS !== "1") {
+  console.warn("[risklayer] local gateway has no RELAYER_PRIVATE_KEY, so payments cannot settle. Set ALLOW_SIMULATED_PAYMENTS=1 for a no-money local run.");
+}
 
 const mounts = [{ path: "/mcp", handler: mcpHandler(publicUrl) }];
 if (mode === "local") {
@@ -73,8 +76,9 @@ const app = createApp({
   receipts,
   mounts,
   devBypass: process.env.DEV_BYPASS === "1",
+  allowSimulatedPayments: process.env.ALLOW_SIMULATED_PAYMENTS === "1",
   demoAgent: process.env.DEMO_AGENT === "1"
-    ? { account: privateKeyToAccount((process.env.AGENT_PRIVATE_KEY?.trim() as Hex | undefined) || generatePrivateKey()), seller: () => `http://127.0.0.1:${port}`, maxUsdPerCall: Number(process.env.AGENT_MAX_USD_PER_CALL ?? 1) }
+    ? { account: privateKeyToAccount((process.env.AGENT_PRIVATE_KEY?.trim() as Hex | undefined) || generatePrivateKey()), seller: () => `http://127.0.0.1:${port}`, maxUsdPerCall: Number(process.env.AGENT_MAX_USD_PER_CALL ?? 1), token: process.env.DEMO_AGENT_TOKEN?.trim() || undefined, maxRunsPerHour: Number(process.env.DEMO_AGENT_MAX_RUNS_PER_HOUR ?? 30) }
     : undefined,
 });
 

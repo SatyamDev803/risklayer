@@ -8,6 +8,7 @@ import { join } from "node:path";
 
 export interface ActivityEntry {
   ts: string;
+  /** Short hash of the request id, never the id itself. */
   requestId?: string;
   sku: string;
   query: Record<string, string>;
@@ -37,7 +38,8 @@ export function recordActivity(entry: ActivityEntry): void {
 export function readActivity(limit = 100): ActivityEntry[] {
   try {
     if (!existsSync(LOG_PATH)) return [];
-    return readFileSync(LOG_PATH, "utf8").split("\n").filter(Boolean).slice(-limit).reverse().flatMap(line => {
+    const n = Math.max(1, Math.min(200, Math.trunc(limit) || 50));
+    return readFileSync(LOG_PATH, "utf8").split("\n").filter(Boolean).slice(-n).reverse().flatMap(line => {
       try {
         return [JSON.parse(line) as ActivityEntry];
       } catch {

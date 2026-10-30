@@ -29,7 +29,7 @@ beforeAll(async () => {
   const app = createApp({
     merchant, hspMode: "local", network: "hashkey", payTo: privateKeyToAccount(generatePrivateKey()).address,
     merchantPublicKeyPem: publicKeyPem(keyPem), webhookSecret: appSecret,
-    payMandateUrl: () => `${base}/hsp-local/api/v1/payment/pay-mandate`, receipts: null, log: () => {},
+    payMandateUrl: () => `${base}/hsp-local/api/v1/payment/pay-mandate`, receipts: null, allowSimulatedPayments: true, log: () => {},
     demoAgent: { account: privateKeyToAccount(generatePrivateKey()), seller: () => base, maxUsdPerCall: 1 },
     mounts: [{ path: "/hsp-local", handler: localGateway({ appKey, appSecret, merchantPublicKeyPem: publicKeyPem(keyPem), webhookUrl: () => `${base}/v1/hsp/webhook`, publicBase: () => `${base}/hsp-local` }) }],
   });

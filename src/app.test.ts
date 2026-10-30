@@ -48,7 +48,7 @@ beforeAll(async () => {
     merchantPublicKeyPem: publicKeyPem(keyPem),
     webhookSecret: appSecret,
     payMandateUrl: () => `${base}/hsp-local/api/v1/payment/pay-mandate`,
-    receipts: null,
+    receipts: null, allowSimulatedPayments: true,
     compute: fakeCompute,
     demoAgent: { account: privateKeyToAccount(generatePrivateKey()), seller: () => base, maxUsdPerCall: 1, currentBlock: async () => 29_525_243 },
     log: e => logged.push(e),
@@ -182,3 +182,44 @@ describe("demo agent stream", () => {
     expect((await run({ tokenIn: "USDT", tokenOut: "WHSK", amountIn: "-1" })).status).toBe(400);
   });
 });
+
+describe("hardening", () => {
+  it("does not release answers for simulated payments unless allowed", async () => {
+    const merchant = new HspMerchant({ baseUrl: "", appKey, appSecret, merchantPrivateKeyPem: keyPem, merchantName: "Risklayer" });
+    let strictBase = "";
+    const strict = createApp({
+      merchant, hspMode: "local", network: "hashkey", payTo: seller.address, merchantPublicKeyPem: publicKeyPem(keyPem), webhookSecret: appSecret,
+      payMandateUrl: () => `${strictBase}/hsp-local/api/v1/payment/pay-mandate`, receipts: null, compute: fakeCompute, log: () => {},
+      mounts: [{ path: "/hsp-local", handler: localGateway({ appKey, appSecret, merchantPublicKeyPem: publicKeyPem(keyPem), webhookUrl: () => `${strictBase}/v1/hsp/webhook`, publicBase: () => `${strictBase}/hsp-local` }) }],
+    });
+    const s = strict.listen(0);
+    await new Promise(r => s.once("listening", r));
+    strictBase = `http://127.0.0.1:${(s.address() as AddressInfo).port}`;
+    (merchant.cfg as { baseUrl: string }).baseUrl = `${strictBase}/hsp-local`;
+    try {
+      const b = new Buyer({ seller: strictBase, account: privateKeyToAccount(generatePrivateKey()), maxUsdPerCall: 1 });
+      const first = await fetch(`${strictBase}/v1/chain-status`);
+      const { buildMandate, submitMandate } = await import("./hsp/payer.js");
+      const challenge = (await first.json()) as Parameters<typeof buildMandate>[1] & { requestId: string };
+      await b.discover();
+      await submitMandate(challenge.hsp.payMandateUrl, await buildMandate(privateKeyToAccount(generatePrivateKey()), challenge, "hashkey"));
+      await new Promise(r => setTimeout(r, 300));
+      const again = await fetch(`${strictBase}/v1/chain-status`, { headers: { "X-Risklayer-Request": challenge.requestId } });
+      expect(again.status).toBe(402);
+    } finally {
+      s.close();
+    }
+  });
+
+  it("keeps request ids out of the public activity feed and status endpoint", async () => {
+    const r = await buyer().ask("chain-status", {});
+    expect(r.ok).toBe(true);
+    const logged = logged_entries();
+    expect(logged.some(e => e.requestId === r.requestId)).toBe(false);
+    const status = (await (await fetch(`${base}/v1/requests/${r.requestId}`)).json()) as Record<string, unknown>;
+    expect(status.answer).toBeUndefined();
+    expect(status.answered).toBe(true);
+  });
+});
+
+const logged_entries = () => logged as { requestId?: string }[];
