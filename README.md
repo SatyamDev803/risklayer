@@ -85,7 +85,7 @@ Dashboard (Check, Activity, Connect):
 
 ```bash
 # API with the dashboard's "Run the paid agent" button enabled (it never sends a swap)
-DEMO_AGENT=1 npm run server
+ALLOW_SIMULATED_PAYMENTS=1 DEMO_AGENT=1 npm run server
 cd web && npm install && cp .env.example .env.local && npm run dev    # http://localhost:3000
 ```
 
