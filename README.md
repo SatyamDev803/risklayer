@@ -104,7 +104,11 @@ npm run contracts:deploy     # HSK mainnet, constructor arg = SELLER_ADDRESS
 npm run contracts:verify     # Blockscout
 ```
 
-Deployed address: _to be filled in after deploy_.
+Deployed on HSK mainnet (chain 177), source verified:
+
+- **RisklayerReceipts:** [`0x771d614EF007920e1CFd2b0339A3F5e01daA4E87`](https://hsk.blockscout.com/address/0x771d614EF007920e1CFd2b0339A3F5e01daA4E87)
+- Deploy transaction: [`0xbad366fd…0746051`](https://hsk.blockscout.com/tx/0xbad366fd5fe81ca5a7895d71418eac2833f4a137f4412f0a8f94827bb0746051)
+- Only the seller `0x28148e9B9D467E5488b1fC3B570A557A0d59dB9D` can record receipts.
 
 ## Tests
 
