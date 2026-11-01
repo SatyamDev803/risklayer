@@ -1,8 +1,9 @@
 import { generateKeyPairSync } from "node:crypto";
 import { describe, expect, it } from "vitest";
+import { domainSeparator } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
-import { nonceFor, recoverAuthorizer, signAuthorization, usdToUnits } from "./eip3009.js";
+import { domainFor, nonceFor, recoverAuthorizer, signAuthorization, usdToUnits } from "./eip3009.js";
 import { cartHash, hmacMessage, publicKeyPem, signMerchantJwt, signWebhook, verifyMerchantJwt, verifyWebhook } from "./signing.js";
 
 const pem = () => generateKeyPairSync("ec", { namedCurve: "secp256k1" }).privateKey.export({ type: "pkcs8", format: "pem" }).toString();
@@ -66,6 +67,11 @@ describe("EIP-3009 authorization", () => {
     const sig = await signAuthorization(account, "hashkey", auth);
     expect(await recoverAuthorizer("hashkey", auth, sig)).toBe(account.address);
     expect(await recoverAuthorizer("hashkey", { ...auth, value: "1" }, sig)).not.toBe(account.address);
+  });
+  it("matches the on-chain DOMAIN_SEPARATOR of each payment token", () => {
+    // Values read from the contracts with DOMAIN_SEPARATOR() on 1 Nov 2026.
+    expect(domainSeparator({ domain: domainFor("hashkey-testnet") })).toBe("0x4b73b8fe157f795886e2aa243f2ccddcc00b80eaa9f9b4b368b716895be71d09");
+    expect(domainSeparator({ domain: domainFor("hashkey") })).toBe("0x78101f50ab6b299bde76a9973e97b1c9ead7df26f6a40692f4440296a507259d");
   });
   it("converts USD prices to 6 decimal units exactly", () => {
     expect(usdToUnits("0.25", 6)).toBe(250000n);

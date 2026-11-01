@@ -45,7 +45,7 @@ export const HSKSWAP = {
 /** Payment tokens HSP accepts with EIP-3009 (the leg the agent signs). */
 export const PAYMENT_TOKENS = {
   hashkey: { network: "hashkey", chainId: 177, coin: "USDC", address: "0x054ed45810DbBAb8B27668922D110669c9D88D0a", decimals: 6, eip712: { name: "Bridged USDC", version: "2" }, rpc: HSK_MAINNET.rpc },
-  "hashkey-testnet": { network: "hashkey-testnet", chainId: 133, coin: "USDC", address: "0x8FE3cB719Ee4410E236Cd6b72ab1fCDC06eF53c6", decimals: 6, eip712: { name: process.env.TESTNET_USDC_EIP712_NAME?.trim() || "USDC", version: process.env.TESTNET_USDC_EIP712_VERSION?.trim() || "2" }, rpc: HSK_TESTNET.rpc },
+  "hashkey-testnet": { network: "hashkey-testnet", chainId: 133, coin: "USDC", address: "0x8FE3cB719Ee4410E236Cd6b72ab1fCDC06eF53c6", decimals: 6, eip712: { name: process.env.TESTNET_USDC_EIP712_NAME?.trim() || "USD Coin", version: process.env.TESTNET_USDC_EIP712_VERSION?.trim() || "2" }, rpc: HSK_TESTNET.rpc },
 } as const;
 
 export type PaymentNetwork = keyof typeof PAYMENT_TOKENS;
