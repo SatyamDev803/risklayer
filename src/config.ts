@@ -15,7 +15,7 @@ export const HSK_MAINNET = {
 export const HSK_TESTNET = {
   id: 133,
   rpc: process.env.HSK_TESTNET_RPC_URL?.trim() || "https://testnet.hsk.xyz",
-  explorer: "https://testnet-explorer.hsk.xyz",
+  explorer: "https://testnet-explorer.hskchain.net",
 } as const;
 
 export interface TokenInfo {

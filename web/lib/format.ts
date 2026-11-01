@@ -6,7 +6,7 @@ import type { Verdict } from "./types";
 export const cn = (...parts: ClassValue[]) => twMerge(clsx(parts));
 
 export const EXPLORER = "https://hsk.blockscout.com";
-export const TESTNET_EXPLORER = "https://testnet-explorer.hsk.xyz";
+export const TESTNET_EXPLORER = "https://testnet-explorer.hskchain.net";
 
 export const explorerTx = (hash: string, chainId = 177) => `${chainId === 133 ? TESTNET_EXPLORER : EXPLORER}/tx/${hash}`;
 export const explorerAddress = (address: string) => `${EXPLORER}/address/${address}`;
