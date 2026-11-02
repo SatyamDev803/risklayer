@@ -2,7 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 
-import { explorerTx, short, timeAgo, VERDICT_INK, VERDICT_TONE } from "@/lib/format";
+import { chainOfNetwork, explorerTx, short, timeAgo, VERDICT_INK, VERDICT_TONE } from "@/lib/format";
 import type { ActivityEntry } from "@/lib/types";
 import { Card } from "./ui/card";
 
@@ -43,7 +43,7 @@ export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
                   <p className="num mt-0.5 flex flex-wrap gap-x-3 text-[12px] text-label-3">
                     <time dateTime={e.ts}>{timeAgo(e.ts)}</time>
                     {e.payment && <span>${e.payment.amountUsd} {e.payment.mode === "hsp" ? "via HSP" : e.payment.simulated ? "simulated" : "via local gateway"}</span>}
-                    {e.payment?.tx && <a className="text-blue hover:underline" href={explorerTx(e.payment.tx, e.payment.network === "hashkey" ? 177 : 133)} target="_blank" rel="noreferrer">Payment</a>}
+                    {e.payment?.tx && <a className="text-blue hover:underline" href={explorerTx(e.payment.tx, chainOfNetwork(e.payment.network))} target="_blank" rel="noreferrer">Payment</a>}
                     {e.receiptTx && <a className="text-blue hover:underline" href={explorerTx(e.receiptTx)} target="_blank" rel="noreferrer">Receipt</a>}
                   </p>
                 </div>

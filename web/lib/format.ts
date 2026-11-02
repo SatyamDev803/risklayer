@@ -7,8 +7,14 @@ export const cn = (...parts: ClassValue[]) => twMerge(clsx(parts));
 
 export const EXPLORER = "https://hsk.blockscout.com";
 export const TESTNET_EXPLORER = "https://testnet-explorer.hskchain.net";
+export const SEPOLIA_EXPLORER = "https://sepolia.etherscan.io";
 
-export const explorerTx = (hash: string, chainId = 177) => `${chainId === 133 ? TESTNET_EXPLORER : EXPLORER}/tx/${hash}`;
+const EXPLORERS: Record<number, string> = { 177: EXPLORER, 133: TESTNET_EXPLORER, 11155111: SEPOLIA_EXPLORER };
+const NETWORK_CHAIN: Record<string, number> = { hashkey: 177, "hashkey-testnet": 133, sepolia: 11155111 };
+
+/** Chain id for a payment network name, as the activity feed only stores the name. */
+export const chainOfNetwork = (network: string) => NETWORK_CHAIN[network] ?? 177;
+export const explorerTx = (hash: string, chainId = 177) => `${EXPLORERS[chainId] ?? EXPLORER}/tx/${hash}`;
 export const explorerAddress = (address: string) => `${EXPLORER}/address/${address}`;
 
 export const short = (value: string, head = 6, tail = 4) => (value.length <= head + tail + 1 ? value : `${value.slice(0, head)}…${value.slice(-tail)}`);

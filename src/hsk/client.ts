@@ -1,6 +1,6 @@
 import { createPublicClient, defineChain, http, parseAbi, type Chain } from "viem";
 
-import { HSK_MAINNET, HSK_TESTNET } from "../config.js";
+import { ETH_SEPOLIA, HSK_MAINNET, HSK_TESTNET } from "../config.js";
 
 export const hskMainnet: Chain = defineChain({
   id: HSK_MAINNET.id,
@@ -19,7 +19,16 @@ export const hskTestnet: Chain = defineChain({
   testnet: true,
 });
 
-export const chainById = (id: number): Chain => (id === HSK_TESTNET.id ? hskTestnet : hskMainnet);
+export const ethSepolia: Chain = defineChain({
+  id: ETH_SEPOLIA.id,
+  name: "Ethereum Sepolia",
+  nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
+  rpcUrls: { default: { http: [ETH_SEPOLIA.rpc] } },
+  blockExplorers: { default: { name: "Etherscan", url: ETH_SEPOLIA.explorer } },
+  testnet: true,
+});
+
+export const chainById = (id: number): Chain => (id === HSK_TESTNET.id ? hskTestnet : id === ETH_SEPOLIA.id ? ethSepolia : hskMainnet);
 
 export const mainnet = createPublicClient({ chain: hskMainnet, transport: http(HSK_MAINNET.rpc, { timeout: 10_000, retryCount: 2 }) });
 

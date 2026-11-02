@@ -19,6 +19,7 @@ const port = Number(process.env.PORT ?? 4021);
 const publicUrl = (process.env.PUBLIC_URL?.trim() || `http://localhost:${port}`).replace(/\/$/, "");
 const mode = hspMode();
 const network = paymentNetwork();
+if (network === "sepolia" && mode === "hsp") throw new Error("PAYMENT_NETWORK=sepolia only works with HSP_MODE=local; HSP settles on HashKey Chain");
 
 function merchantKey(): string {
   const pem = process.env.MERCHANT_PRIVATE_KEY_PEM?.trim() || (process.env.MERCHANT_KEY_PATH ? readFileSync(process.env.MERCHANT_KEY_PATH, "utf8") : "");

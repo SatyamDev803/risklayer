@@ -12,7 +12,7 @@ import { parseArgs } from "node:util";
 import type { Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
-import { HSK_MAINNET } from "../config.js";
+import { HSK_MAINNET, paymentExplorer } from "../config.js";
 import { runAgent, type AgentEvent } from "./runAgent.js";
 
 const { values: args } = parseArgs({
@@ -46,7 +46,7 @@ function print(e: AgentEvent) {
       say(`Verified: hash ${e.resultHash.slice(0, 23)}… recomputed and matched, bound to request ${e.requestId.slice(0, 8)}`);
       say(`${tint[e.verdict] ?? ""}${bold(e.verdict)}\x1b[0m`);
       for (const r of e.reasons) say(`  ${r}`);
-      if (e.payment.tx) say(`payment tx ${e.payment.chainId === 177 ? EXPLORER : "https://testnet-explorer.hskchain.net"}/tx/${e.payment.tx}`);
+      if (e.payment.tx) say(`payment tx ${paymentExplorer(e.payment.chainId)}/tx/${e.payment.tx}`);
       if (e.payment.simulated) say("payment verified by the local gateway but not broadcast (simulated)");
       if (e.receipt?.tx) say(`receipt ${EXPLORER}/tx/${e.receipt.tx}`);
       else if (e.receipt?.error) say(`receipt not written: ${e.receipt.error}`);

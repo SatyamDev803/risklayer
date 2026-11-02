@@ -72,6 +72,8 @@ describe("EIP-3009 authorization", () => {
     // Values read from the contracts with DOMAIN_SEPARATOR() on 1 Nov 2026.
     expect(domainSeparator({ domain: domainFor("hashkey-testnet") })).toBe("0x4b73b8fe157f795886e2aa243f2ccddcc00b80eaa9f9b4b368b716895be71d09");
     expect(domainSeparator({ domain: domainFor("hashkey") })).toBe("0x78101f50ab6b299bde76a9973e97b1c9ead7df26f6a40692f4440296a507259d");
+    // Circle USDC on Ethereum Sepolia, read on 3 Nov 2026.
+    expect(domainSeparator({ domain: domainFor("sepolia") })).toBe("0xb90e5057db141a932946e64d09ccb7ffc9b00bd79fec26f698d29af0c83320a6");
   });
   it("converts USD prices to 6 decimal units exactly", () => {
     expect(usdToUnits("0.25", 6)).toBe(250000n);

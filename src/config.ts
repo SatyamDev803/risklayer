@@ -18,6 +18,14 @@ export const HSK_TESTNET = {
   explorer: "https://testnet-explorer.hskchain.net",
 } as const;
 
+/** Ethereum Sepolia: only for the payment leg, with Circle's test USDC
+ * (the organizers' recommended test token). HSP itself does not settle here. */
+export const ETH_SEPOLIA = {
+  id: 11155111,
+  rpc: process.env.SEPOLIA_RPC_URL?.trim() || "https://ethereum-sepolia-rpc.publicnode.com",
+  explorer: "https://sepolia.etherscan.io",
+} as const;
+
 export interface TokenInfo {
   symbol: string;
   address: Address;
@@ -44,16 +52,21 @@ export const HSKSWAP = {
 
 /** Payment tokens HSP accepts with EIP-3009 (the leg the agent signs). */
 export const PAYMENT_TOKENS = {
-  hashkey: { network: "hashkey", chainId: 177, coin: "USDC", address: "0x054ed45810DbBAb8B27668922D110669c9D88D0a", decimals: 6, eip712: { name: "Bridged USDC", version: "2" }, rpc: HSK_MAINNET.rpc },
-  "hashkey-testnet": { network: "hashkey-testnet", chainId: 133, coin: "USDC", address: "0x8FE3cB719Ee4410E236Cd6b72ab1fCDC06eF53c6", decimals: 6, eip712: { name: process.env.TESTNET_USDC_EIP712_NAME?.trim() || "USD Coin", version: process.env.TESTNET_USDC_EIP712_VERSION?.trim() || "2" }, rpc: HSK_TESTNET.rpc },
+  hashkey: { network: "hashkey", chainId: 177, coin: "USDC", address: "0x054ed45810DbBAb8B27668922D110669c9D88D0a", decimals: 6, eip712: { name: "Bridged USDC", version: "2" }, rpc: HSK_MAINNET.rpc, explorer: HSK_MAINNET.explorer },
+  "hashkey-testnet": { network: "hashkey-testnet", chainId: 133, coin: "USDC", address: "0x8FE3cB719Ee4410E236Cd6b72ab1fCDC06eF53c6", decimals: 6, eip712: { name: process.env.TESTNET_USDC_EIP712_NAME?.trim() || "USD Coin", version: process.env.TESTNET_USDC_EIP712_VERSION?.trim() || "2" }, rpc: HSK_TESTNET.rpc, explorer: HSK_TESTNET.explorer },
+  sepolia: { network: "sepolia", chainId: 11155111, coin: "USDC", address: "0x1c7D4B196Cb0C7B01d743Fbc6116a902379C7238", decimals: 6, eip712: { name: "USDC", version: "2" }, rpc: ETH_SEPOLIA.rpc, explorer: ETH_SEPOLIA.explorer },
 } as const;
 
 export type PaymentNetwork = keyof typeof PAYMENT_TOKENS;
 
+/** Explorer for a payment-leg chain id; market data and receipts are always on mainnet. */
+export const paymentExplorer = (chainId: number): string =>
+  Object.values(PAYMENT_TOKENS).find(t => t.chainId === chainId)?.explorer ?? HSK_MAINNET.explorer;
+
 export function paymentNetwork(): PaymentNetwork {
   const value = (process.env.PAYMENT_NETWORK ?? "hashkey-testnet").trim();
-  if (value !== "hashkey" && value !== "hashkey-testnet") throw new Error(`PAYMENT_NETWORK must be hashkey or hashkey-testnet, got '${value}'`);
-  return value;
+  if (!(value in PAYMENT_TOKENS)) throw new Error(`PAYMENT_NETWORK must be one of ${Object.keys(PAYMENT_TOKENS).join(", ")}, got '${value}'`);
+  return value as PaymentNetwork;
 }
 
 /** `hsp` talks to HashKey's merchant API; `local` uses the HSP-compatible
