@@ -188,7 +188,11 @@ export function localGateway(cfg: LocalGatewayConfig) {
         ? { ...order.record, status: "payment-included", status_reason: `included in block ${receipt.blockNumber}` }
         : { ...order.record, status: "payment-failed", status_reason: "transferWithAuthorization reverted" };
     } catch (e) {
-      order.record = { ...order.record, status: "payment-failed", status_reason: (e as Error).message.slice(0, 200) };
+      // Provider errors embed the RPC URL, which can carry an API key: log it redacted, return a generic reason.
+      const detail = (e as Error).message.replace(/https?:\/\/\S+/g, "<rpc>");
+      console.warn(`[local-gateway] settlement failed for ${order.record.payment_request_id}: ${detail.slice(0, 300)}`);
+      const reason = /insufficient|exceeds balance/i.test(detail) ? "payer balance or relayer gas is insufficient" : "on-chain settlement failed";
+      order.record = { ...order.record, status: "payment-failed", status_reason: reason };
     }
     await notify(order);
   }
