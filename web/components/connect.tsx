@@ -27,7 +27,7 @@ function CopyLine({ text, label, onCopied }: { text: string; label: string; onCo
 
 function Way({ icon: Icon, color, title, body, children }: { icon: LucideIcon; color: string; title: string; body: string; children: React.ReactNode }) {
   return (
-    <div className="flex flex-col rounded-[22px] bg-surface p-5 shadow-card">
+    <div className="flex min-w-0 flex-col rounded-[22px] bg-surface p-5 shadow-card">
       <span className="grid size-10 place-items-center rounded-xl text-white" style={{ background: color }}>
         <Icon className="size-5" strokeWidth={2.2} aria-hidden="true" />
       </span>
