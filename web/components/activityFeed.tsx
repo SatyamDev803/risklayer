@@ -42,9 +42,9 @@ export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
                   <p className="text-[14px] leading-snug text-label-2">{e.ok ? e.reasons?.[0] : e.error}</p>
                   <p className="num mt-0.5 flex flex-wrap gap-x-3 text-[12px] text-label-3">
                     <time dateTime={e.ts}>{timeAgo(e.ts)}</time>
-                    {e.payment && <span>${e.payment.amountUsd} {e.payment.mode === "hsp" ? "via HSP" : e.payment.simulated ? "simulated" : "via local gateway"}</span>}
-                    {e.payment?.tx && <a className="text-blue hover:underline" href={explorerTx(e.payment.tx, chainOfNetwork(e.payment.network))} target="_blank" rel="noreferrer">Payment</a>}
-                    {e.receiptTx && <a className="text-blue hover:underline" href={explorerTx(e.receiptTx)} target="_blank" rel="noreferrer">Receipt</a>}
+                    {e.payment && <span>${e.payment.amountUsd} {e.payment.mode === "hsp" ? "via HSP" : e.payment.simulated ? "simulated" : e.payment.network === "sepolia" ? "USDC on Sepolia" : "via local gateway"}</span>}
+                    {e.payment?.tx && <a className="text-blue hover:underline" href={explorerTx(e.payment.tx, chainOfNetwork(e.payment.network))} target="_blank" rel="noreferrer">USDC transfer ↗</a>}
+                    {e.receiptTx && <a className="text-blue hover:underline" href={explorerTx(e.receiptTx)} target="_blank" rel="noreferrer">Receipt on HSK ↗</a>}
                   </p>
                 </div>
               </motion.li>

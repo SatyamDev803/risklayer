@@ -7,7 +7,7 @@ const STEPS = [
   },
   {
     title: "Pay agent to agent",
-    body: "Risklayer answers 402 with an HSP Cart Mandate it has signed. The agent checks the terms, then signs an EIP-3009 USDC payment.",
+    body: "Risklayer answers 402 with an HSP Cart Mandate it has signed. The agent checks the terms, then signs a gasless EIP-3009 authorization and 0.25 USDC moves on chain.",
     href: "#connect",
     link: "See the payment terms",
   },

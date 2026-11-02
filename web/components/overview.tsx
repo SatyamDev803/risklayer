@@ -1,10 +1,16 @@
 "use client";
 
-import { ArrowDown, ArrowRight } from "lucide-react";
+import { ArrowRight, Play } from "lucide-react";
 import { motion, type Variants } from "motion/react";
 
 import { fmtBps, fmtNum, tint, VERDICT_INK, VERDICT_TONE } from "@/lib/format";
 import { SAMPLE_SIZES, useLiveSamples } from "@/lib/useRisklayer";
+import { RUN_AGENT_EVENT } from "./checkConsole";
+
+function watchAgent() {
+  document.getElementById("check")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  window.dispatchEvent(new Event(RUN_AGENT_EVENT));
+}
 
 const RISE: Variants = {
   hidden: { opacity: 0, y: 14 },
@@ -15,7 +21,7 @@ export function Overview() {
   const samples = useLiveSamples();
   const block = Object.values(samples).find(Boolean)?.blockNumber;
   return (
-    <section id="top" className="grid min-h-[calc(100svh-57px)] scroll-mt-20 content-center items-center gap-10 py-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14 lg:py-[4vh]">
+    <section id="top" className="grid min-h-[calc(100svh-250px)] scroll-mt-20 content-center items-center gap-10 py-10 lg:grid-cols-[1.1fr_1fr] lg:gap-14 lg:py-[4vh]">
       <motion.div initial="hidden" animate="show" variants={{ show: { transition: { staggerChildren: 0.09 } } }}>
         <motion.p variants={RISE} className="inline-flex items-center gap-2 text-[15px] font-medium text-blue">
           <span className="relative flex size-2">
@@ -31,18 +37,18 @@ export function Overview() {
           Ask before you move money.
         </motion.h1>
         <motion.p variants={RISE} className="mt-5 max-w-[54ch] text-[17px] leading-relaxed text-label-2 sm:text-[19px] lg:mt-[2.5vh]">
-          A trading agent asks Risklayer whether a swap is safe, pays for the answer through HSP, checks the proof, and then obeys it. Allow, reduce or block, from live HSKSwap prices.
+          An AI trading agent asks Risklayer whether a swap is safe and pays for the answer itself, with real USDC and no human in the loop. It checks the proof, obeys the verdict, and every paid answer is recorded on HSK mainnet.
         </motion.p>
         <motion.div variants={RISE} className="mt-8 flex flex-wrap items-center gap-3">
-          <a href="#check" className="inline-flex h-11 items-center gap-2 rounded-full bg-blue px-5 text-[16px] font-medium text-white transition hover:brightness-110 active:scale-[0.97]">
-            Run a check <ArrowDown className="size-4" aria-hidden="true" />
-          </a>
-          <a href="#how" className="inline-flex h-11 items-center gap-2 rounded-full bg-fill px-5 text-[16px] font-medium transition hover:bg-fill-strong active:scale-[0.97]">
+          <button type="button" onClick={watchAgent} className="inline-flex h-12 items-center gap-2 rounded-full bg-blue px-6 text-[17px] font-semibold text-white shadow-[0_8px_24px_-8px_var(--blue)] transition hover:brightness-110 active:scale-[0.97]">
+            <Play className="size-4 fill-current" aria-hidden="true" /> Watch an agent pay
+          </button>
+          <a href="#how" className="inline-flex h-12 items-center gap-2 rounded-full bg-fill px-5 text-[16px] font-medium transition hover:bg-fill-strong active:scale-[0.97]">
             How it works
           </a>
         </motion.div>
         <motion.p variants={RISE} className="num mt-5 text-[14px] text-label-2">
-          {block ? `Reading HSK mainnet at block ${fmtNum(block, 0)}` : "Connecting to HSK mainnet"}
+          {block ? `One click, about 30 seconds, two real payments. Reading HSK mainnet at block ${fmtNum(block, 0)}.` : "One click, about 30 seconds, two real payments."}
         </motion.p>
       </motion.div>
 
@@ -83,9 +89,9 @@ export function Overview() {
             );
           })}
         </ul>
-        <a href="#check" className="mt-4 inline-flex items-center gap-1 text-[14px] font-medium text-blue hover:underline">
-          Watch an agent pay for one <ArrowRight className="size-3.5" aria-hidden="true" />
-        </a>
+        <button type="button" onClick={watchAgent} className="mt-4 inline-flex items-center gap-1 text-[14px] font-medium text-blue hover:underline">
+          Watch an agent pay for the 60,000 check <ArrowRight className="size-3.5" aria-hidden="true" />
+        </button>
       </motion.div>
     </section>
   );

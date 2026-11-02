@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/format";
 import type { AgentEvent, Preview } from "@/lib/types";
 import { AgentLog } from "./agentLog";
+import { PaymentTrail } from "./paymentTrail";
 import { Card, Group } from "./ui/card";
 import { Segmented } from "./ui/segmented";
 import { Switch } from "./ui/switch";
@@ -18,6 +19,9 @@ const LIMITS = [
   { value: "300", label: "300 bps" },
 ];
 type Mode = "agent" | "preview";
+
+/** Fired by the hero button: run the paid agent on the showcase trade. */
+export const RUN_AGENT_EVENT = "risklayer:run-agent";
 
 export function CheckConsole({ notify }: { notify: (text: string, tone?: "ok" | "error") => void }) {
   const [tokenIn, setTokenIn] = useState("USDT");
@@ -34,12 +38,15 @@ export function CheckConsole({ notify }: { notify: (text: string, tone?: "ok" | 
 
   const problem = !/^\d+(\.\d+)?$/.test(amountIn) || Number(amountIn) <= 0 ? "Enter an amount above zero." : tokenIn === tokenOut ? "Pick two different tokens." : null;
 
-  async function run() {
-    if (problem) return notify(problem, "error");
+  async function run(over?: { mode: Mode; tokenIn: string; tokenOut: string; amountIn: string; maxImpactBps: string; tamper: boolean }) {
+    const p = over ?? { mode, tokenIn, tokenOut, amountIn, maxImpactBps, tamper };
+    if (!over && problem) return notify(problem, "error");
+    if (busy) return;
     setBusy(true);
-    setShown(mode);
+    setShown(p.mode);
     try {
-      if (mode === "preview") {
+      if (p.mode === "preview") {
+        const { tokenIn, tokenOut, amountIn, maxImpactBps } = p;
         const qs = new URLSearchParams({ tokenIn, tokenOut, amountIn, maxImpactBps });
         const res = await fetch(`/api/rl/preview/trade-gate?${qs}`);
         const body = await res.json();
@@ -54,12 +61,12 @@ export function CheckConsole({ notify }: { notify: (text: string, tone?: "ok" | 
       const res = await fetch("/api/rl/v1/demo/agent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tokenIn, tokenOut, amountIn, maxImpactBps: Number(maxImpactBps), corrupt: tamper }),
+        body: JSON.stringify({ tokenIn: p.tokenIn, tokenOut: p.tokenOut, amountIn: p.amountIn, maxImpactBps: Number(p.maxImpactBps), corrupt: p.tamper }),
         signal: controller.signal,
       });
       if (!res.ok || !res.body) {
         const body = await res.json().catch(() => ({}));
-        throw new Error(res.status === 404 ? "The paid agent is off on this server. Start the API with DEMO_AGENT=1." : (body.error ?? "The agent could not start."));
+        throw new Error(res.status === 404 ? "The paid agent is off on this server. Start the API with DEMO_AGENT=1." : res.status === 429 ? "The agent is busy or has hit its hourly limit. Try again in a minute." : (body.error ?? "The agent could not start."));
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -83,6 +90,24 @@ export function CheckConsole({ notify }: { notify: (text: string, tone?: "ok" | 
     }
   }
 
+  // The hero button runs the showcase trade: 60,000 USDT is too big for the pool, so the agent reduces, re-checks, and is allowed.
+  const runRef = useRef(run);
+  runRef.current = run;
+  useEffect(() => {
+    const onRun = () => {
+      const showcase = { mode: "agent" as const, tokenIn: "USDT", tokenOut: "WHSK", amountIn: "60000", maxImpactBps: "100", tamper: false };
+      setMode("agent");
+      setTokenIn(showcase.tokenIn);
+      setTokenOut(showcase.tokenOut);
+      setAmountIn(showcase.amountIn);
+      setMaxImpactBps(showcase.maxImpactBps);
+      setTamper(false);
+      void runRef.current(showcase);
+    };
+    window.addEventListener(RUN_AGENT_EVENT, onRun);
+    return () => window.removeEventListener(RUN_AGENT_EVENT, onRun);
+  }, []);
+
   const lastAnswer = [...events].reverse().find((e): e is Extract<AgentEvent, { type: "answer" }> => e.type === "answer" && e.sku === "trade-gate");
   const quotedOut = lastAnswer?.data.quotedAmountOut;
   const quoted = typeof quotedOut === "number" && lastAnswer?.data.tokenOut && (lastAnswer.data.tokenOut as { symbol: string }).symbol === tokenOut ? quotedOut.toLocaleString("en-US", { maximumFractionDigits: 2 }) : null;
@@ -98,10 +123,10 @@ export function CheckConsole({ notify }: { notify: (text: string, tone?: "ok" | 
 
   return (
     <section id="check" className="grid scroll-mt-20 gap-4 lg:grid-cols-12 lg:items-start lg:gap-5">
-      <div className="min-w-0 lg:col-span-5">
+      <div className="flex min-w-0 flex-col gap-4 lg:col-span-5 lg:gap-5">
         <Card title="Ask Risklayer" aside={<Segmented label="Check type" value={mode} onChange={setMode} options={[{ value: "agent", label: "Paid agent" }, { value: "preview", label: "Free preview" }]} className="w-[220px]" />}>
           <p className="px-5 pt-1 text-[13px] text-label-2">
-            {mode === "agent" ? "A trading agent buys the check through HSP, verifies the proof, and follows the verdict. It stops before sending any swap." : "The verdict and the reasons, free. No evidence, proof or receipt."}
+            {mode === "agent" ? "A trading agent pays 0.25 USDC for each check, a real transfer on chain. It verifies the proof and follows the verdict. It stops before sending any swap." : "The verdict and the reasons, free. No evidence, proof or receipt."}
           </p>
 
           <form
@@ -180,30 +205,37 @@ export function CheckConsole({ notify }: { notify: (text: string, tone?: "ok" | 
             </button>
           </form>
         </Card>
+        {shown === "agent" && events.length > 0 && (
+          <Card title="Agent log" aside={busy ? "Live" : "Finished"}>
+            <p className="px-5 pb-2 pt-1 text-[13px] text-label-2">Every step the buyer took, in order.</p>
+            <AgentLog events={events} running={busy} />
+          </Card>
+        )}
       </div>
 
-      <div ref={resultRef} className="min-w-0 scroll-mt-20 lg:col-span-7 lg:row-span-2" aria-live="polite" aria-busy={busy}>
+      <div ref={resultRef} className="min-w-0 scroll-mt-20 lg:col-span-7" aria-live="polite" aria-busy={busy}>
         <Card className="min-h-full">
+          {shown === "agent" && events.length > 0 && (
+            <div className="pt-4">
+              <div className="flex items-baseline justify-between px-5 pb-2 sm:px-6">
+                <h3 className="font-display text-[17px] font-semibold tracking-[-0.02em]">Payment trail</h3>
+                <span className="text-[13px] text-label-2">{busy ? "Live" : "Tap a step with an arrow to open it on chain"}</span>
+              </div>
+              <PaymentTrail events={events} running={busy} />
+            </div>
+          )}
           {shown === "agent" && last ? (
             last.type === "answer" ? <AnswerPanel key={last.requestId} answer={last} /> : <RejectedPanel event={last} />
           ) : shown === "preview" && preview && !busy ? (
             <PreviewPanel preview={preview} />
           ) : busy ? (
-            <Waiting agent={mode === "agent"} />
+            <Waiting agent={shown === "agent"} compact={shown === "agent" && events.length > 0} />
           ) : (
             <Empty />
           )}
         </Card>
       </div>
 
-      {shown === "agent" && events.length > 0 && (
-        <div className="min-w-0 lg:col-span-5">
-          <Card title="Agent log" aside={busy ? "Live" : "Finished"}>
-            <p className="px-5 pb-2 pt-1 text-[13px] text-label-2">Every step the buyer took, in order.</p>
-            <AgentLog events={events} running={busy} />
-          </Card>
-        </div>
-      )}
     </section>
   );
 }
@@ -226,9 +258,9 @@ function TokenPicker({ label, name, value, onChange }: { label: string; name: st
   );
 }
 
-function Waiting({ agent }: { agent: boolean }) {
+function Waiting({ agent, compact }: { agent: boolean; compact?: boolean }) {
   return (
-    <div className="grid min-h-[420px] place-items-center p-8 text-center">
+    <div className={cn("grid place-items-center p-8 text-center", compact ? "min-h-[200px]" : "min-h-[420px]")}>
       <div>
         <span className="relative mx-auto flex size-12 items-center justify-center">
           <span className="absolute size-12 animate-ping rounded-full bg-blue opacity-20" />
@@ -244,7 +276,7 @@ function Waiting({ agent }: { agent: boolean }) {
 function Empty() {
   const steps: [string, string, string][] = [
     ["Ask", "The agent asks whether a swap is safe at its size.", "var(--blue)"],
-    ["Pay", "Risklayer answers 402 with signed terms. The agent pays in USDC through HSP.", "var(--indigo)"],
+    ["Pay", "Risklayer answers 402 with signed terms. The agent pays 0.25 USDC, a real transfer you can open on Etherscan.", "var(--indigo)"],
     ["Verify", "The agent recomputes the answer's hash and checks it is for its own question.", "var(--teal)"],
     ["Obey", "Block stops it. Reduce shrinks the trade. Allow still takes a fresh quote first.", "var(--green)"],
   ];
