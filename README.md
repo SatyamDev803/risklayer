@@ -67,6 +67,8 @@ Two modes, set by `HSP_MODE`:
   - With `RELAYER_PRIVATE_KEY` set, it submits the agent's EIP-3009 authorization on chain, and the USDC transfer is real.
   - Without it, the authorization is fully verified but not broadcast. Every record then says `simulated: true`.
 
+`PAYMENT_NETWORK` picks where the USDC moves: `hashkey` (177), `hashkey-testnet` (133, HSP's sandbox token) or `sepolia` (Circle's test USDC on Ethereum Sepolia, the token the hackathon organizers recommended for payment testing). `sepolia` works only with the local gateway, because HSP settles on HashKey Chain. Market data and receipts stay on HSK mainnet in every mode.
+
 HashKey has not published the payer-side `pay-mandate` body. We send the AP2 `PaymentMandate` shape from HashKey's Go SDK, with an x402 v2 `exact` payload in `payment_response.details`. See `docs/HSP.md`.
 
 ## Run it

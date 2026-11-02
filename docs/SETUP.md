@@ -139,7 +139,7 @@ Every variable is listed with a comment in `.env.example`. These are the ones pe
 | Variable | Default | Notes |
 |---|---|---|
 | `HSP_MODE` | `local` | `hsp` requires app key, secret and merchant key |
-| `PAYMENT_NETWORK` | `hashkey-testnet` | Market data is always mainnet; this is only the payment leg |
+| `PAYMENT_NETWORK` | `hashkey-testnet` | `hashkey`, `hashkey-testnet` or `sepolia` (local gateway only). Market data is always mainnet; this is only the payment leg |
 | `SELLER_ADDRESS` | from `SELLER_PRIVATE_KEY` | Where payments land |
 | `DEMO_AGENT` | `0` | `1` enables the dashboard's paid agent button. It never swaps |
 | `DEMO_AGENT_TOKEN` | empty | When set, the agent endpoint needs it. Set the same value on the web service so its proxy can send it |
